@@ -19,7 +19,7 @@ Load< MeshBuffer > piano_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 	return ret;
 });
 
-Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
+Load< Scene > piano_scene(LoadTagDefault, []() -> Scene const * {
 	return new Scene(data_path("piano.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
 		Mesh const &mesh = piano_meshes->lookup(mesh_name);
 
@@ -32,7 +32,8 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 		drawable.pipeline.type = mesh.type;
 		drawable.pipeline.start = mesh.start;
 		drawable.pipeline.count = mesh.count;
-
+		
+		drawable.name = mesh_name;
 	});
 });
 
@@ -40,20 +41,24 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 	return new Sound::Sample(data_path("dusty-floor.opus"));
 }); */
 
-PlayMode::PlayMode() : scene(*hexapod_scene) {
+PlayMode::PlayMode() : scene(*piano_scene) {
 	//get pointers to leg for convenience:
-	/* for (auto &transform : scene.transforms) {
-		if (transform.name == "Hip.FL") hip = &transform;
-		else if (transform.name == "UpperLeg.FL") upper_leg = &transform;
-		else if (transform.name == "LowerLeg.FL") lower_leg = &transform;
+	for (auto &transform : scene.transforms) {
+		if (transform.name == "C4") c4 = &transform;
 	}
-	if (hip == nullptr) throw std::runtime_error("Hip not found.");
-	if (upper_leg == nullptr) throw std::runtime_error("Upper leg not found.");
-	if (lower_leg == nullptr) throw std::runtime_error("Lower leg not found.");
-
-	hip_base_rotation = hip->rotation;
-	upper_leg_base_rotation = upper_leg->rotation;
-	lower_leg_base_rotation = lower_leg->rotation; */
+	if (c4 == nullptr) throw std::runtime_error("C4 not found.");
+	
+	// apply tint function
+	for (auto &drawable : scene.drawables) {
+		drawable.pipeline.set_uniforms = [&]() {
+			if (drawable.name == "C4") {
+				glUniform3f(drawable.pipeline.TINT_vec3, 1.0f * cycle, 1.0f, 1.0f);
+			}
+			else {
+				glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, 1.0f, 0.6f);
+			}
+		};
+	}
 
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
@@ -129,11 +134,14 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 void PlayMode::update(float elapsed) {
 
+	cycle += elapsed;
+	cycle -= std::floor(cycle);
+
 	//move camera:
 	{
 
 		//combine inputs into a move:
-		constexpr float PlayerSpeed = 30.0f;
+		constexpr float PlayerSpeed = 7.5f;
 		glm::vec2 move = glm::vec2(0.0f);
 		if (left.pressed && !right.pressed) move.x =-1.0f;
 		if (!left.pressed && right.pressed) move.x = 1.0f;

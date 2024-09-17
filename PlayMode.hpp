@@ -28,6 +28,11 @@ struct PlayMode : Mode {
 	//local copy of the game scene (so code can change it during gameplay):
 	Scene scene;
 
+	Scene::Transform *c4 = nullptr;
+	Scene::Transform *cs4 = nullptr;
+
+	float cycle = 0.0f;
+
 	// glm::vec3 get_leg_tip_position();
 
 	//music coming from the tip of the leg (as a demonstration):

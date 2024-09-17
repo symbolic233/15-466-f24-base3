@@ -53,6 +53,7 @@ struct Scene {
 		//a 'Drawable' attaches attribute data to a transform:
 		Drawable(Transform *transform_) : transform(transform_) { assert(transform); }
 		Transform * transform;
+		std::string name;
 
 		//Contains all the data needed to run the OpenGL pipeline:
 		struct Pipeline {
@@ -69,6 +70,8 @@ struct Scene {
 			GLuint OBJECT_TO_CLIP_mat4 = -1U; //uniform location for object to clip space matrix
 			GLuint OBJECT_TO_LIGHT_mat4x3 = -1U; //uniform location for object to light space (== world space) matrix
 			GLuint NORMAL_TO_LIGHT_mat3 = -1U; //uniform location for normal to light space (== world space) matrix
+
+			GLuint TINT_vec3 = -1U;
 
 			std::function< void() > set_uniforms; //(optional) function to set any other useful uniforms
 

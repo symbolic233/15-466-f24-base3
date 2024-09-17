@@ -14,6 +14,7 @@ Load< LitColorTextureProgram > lit_color_texture_program(LoadTagEarly, []() -> L
 	lit_color_texture_program_pipeline.OBJECT_TO_CLIP_mat4 = ret->OBJECT_TO_CLIP_mat4;
 	lit_color_texture_program_pipeline.OBJECT_TO_LIGHT_mat4x3 = ret->OBJECT_TO_LIGHT_mat4x3;
 	lit_color_texture_program_pipeline.NORMAL_TO_LIGHT_mat3 = ret->NORMAL_TO_LIGHT_mat3;
+	lit_color_texture_program_pipeline.TINT_vec3 = ret->TINT_vec3;
 
 	/* This will be used later if/when we build a light loop into the Scene:
 	lit_color_texture_program_pipeline.LIGHT_TYPE_int = ret->LIGHT_TYPE_int;
@@ -51,6 +52,7 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"uniform mat4 OBJECT_TO_CLIP;\n"
 		"uniform mat4x3 OBJECT_TO_LIGHT;\n"
 		"uniform mat3 NORMAL_TO_LIGHT;\n"
+		"uniform vec3 TINT = {1.0f, 1.0f, 1.0f};\n"
 		"in vec4 Position;\n"
 		"in vec3 Normal;\n"
 		"in vec4 Color;\n"
@@ -63,7 +65,7 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"	gl_Position = OBJECT_TO_CLIP * Position;\n"
 		"	position = OBJECT_TO_LIGHT * Position;\n"
 		"	normal = NORMAL_TO_LIGHT * Normal;\n"
-		"	color = Color;\n"
+		"	color = vec4(Color.rgb * TINT, Color.a);\n"
 		"	texCoord = TexCoord;\n"
 		"}\n"
 	,
@@ -119,6 +121,8 @@ LitColorTextureProgram::LitColorTextureProgram() {
 	OBJECT_TO_CLIP_mat4 = glGetUniformLocation(program, "OBJECT_TO_CLIP");
 	OBJECT_TO_LIGHT_mat4x3 = glGetUniformLocation(program, "OBJECT_TO_LIGHT");
 	NORMAL_TO_LIGHT_mat3 = glGetUniformLocation(program, "NORMAL_TO_LIGHT");
+
+	TINT_vec3 = glGetUniformLocation(program, "TINT");
 
 	LIGHT_TYPE_int = glGetUniformLocation(program, "LIGHT_TYPE");
 	LIGHT_LOCATION_vec3 = glGetUniformLocation(program, "LIGHT_LOCATION");
