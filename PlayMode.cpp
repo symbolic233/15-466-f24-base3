@@ -37,9 +37,12 @@ Load< Scene > piano_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
-/* Load< Sound::Sample > dusty_floor_sample(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("dusty-floor.opus"));
-}); */
+Load< Sound::Sample > correct_sample(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("notes_correct.wav"));
+});
+Load< Sound::Sample > incorrect_sample(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("notes_incorrect.wav"));
+});
 
 PlayMode::PlayMode() : scene(*piano_scene) {
 	//get pointers to leg for convenience:
@@ -52,10 +55,13 @@ PlayMode::PlayMode() : scene(*piano_scene) {
 	for (auto &drawable : scene.drawables) {
 		drawable.pipeline.set_uniforms = [&]() {
 			if (drawable.name == "C4") {
-				glUniform3f(drawable.pipeline.TINT_vec3, 1.0f * cycle, 1.0f, 1.0f);
+				glUniform3f(drawable.pipeline.TINT_vec3, cycle, 1.0f, 1.0f);
+			}
+			else if (drawable.name == "Cs4") {
+				glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, cycle, 1.0f);
 			}
 			else {
-				glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, 1.0f, 0.6f);
+				glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, 1.0f, 1.0f);
 			}
 		};
 	}
@@ -66,7 +72,8 @@ PlayMode::PlayMode() : scene(*piano_scene) {
 
 	//start music loop playing:
 	// (note: position will be over-ridden in update())
-	// leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, get_leg_tip_position(), 10.0f);
+	correct_loop = Sound::loop(*correct_sample, 1.0f, 0.0f);
+	incorrect_loop = Sound::loop(*incorrect_sample, 1.0f, 0.0f);
 }
 
 PlayMode::~PlayMode() {
