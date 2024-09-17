@@ -32,6 +32,11 @@ struct PlayMode : Mode {
 	Scene::Transform *cs4 = nullptr;
 
 	float cycle = 0.0f;
+	uint32_t selection = 0;
+	uint32_t answer = 0;
+	bool sharp = false;
+	static const uint32_t keycount = 13;
+	std::string keys[keycount] = {"C4", "Cs4", "D4", "Ds4", "E4", "F4", "Fs4", "G4", "Gs4", "A4", "As4", "B4", "C5"};
 
 	std::shared_ptr< Sound::PlayingSample > correct_loop;
 	std::shared_ptr< Sound::PlayingSample > incorrect_loop;

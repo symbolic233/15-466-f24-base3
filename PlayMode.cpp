@@ -54,14 +54,17 @@ PlayMode::PlayMode() : scene(*piano_scene) {
 	// apply tint function
 	for (auto &drawable : scene.drawables) {
 		drawable.pipeline.set_uniforms = [&]() {
-			if (drawable.name == "C4") {
-				glUniform3f(drawable.pipeline.TINT_vec3, cycle, 1.0f, 1.0f);
-			}
-			else if (drawable.name == "Cs4") {
-				glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, cycle, 1.0f);
-			}
-			else {
-				glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, 1.0f, 1.0f);
+			for (uint32_t i = 0; i < keycount; i++) {
+				if (drawable.name == keys[i]) {
+					if (selection & (1 << i)) {
+						// different highlighting for white/black keys
+						if (drawable.name[1] == 's') glUniform3f(drawable.pipeline.TINT_vec3, cycle * 0.5f, 3.0f - 2.0f * cycle, cycle * 0.5f);
+						else glUniform3f(drawable.pipeline.TINT_vec3, cycle * 0.5f, 1.0f, cycle * 0.5f);
+					}
+					else {
+						glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, 1.0f, 1.0f);
+					}
+				}
 			}
 		};
 	}
@@ -82,41 +85,40 @@ PlayMode::~PlayMode() {
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_KEYDOWN) {
-		if (evt.key.keysym.sym == SDLK_ESCAPE) {
-			SDL_SetRelativeMouseMode(SDL_FALSE);
+		if (evt.key.keysym.sym == SDLK_LSHIFT || evt.key.keysym.sym == SDLK_RSHIFT) {
+			sharp = true;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_a) {
-			left.downs += 1;
-			left.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
-			right.downs += 1;
-			right.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
-			up.downs += 1;
-			up.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
-			down.downs += 1;
-			down.pressed = true;
-			return true;
+		}
+		std::string choice = "";
+		if (evt.key.keysym.sym == SDLK_a) choice += "A";
+		else if (evt.key.keysym.sym == SDLK_b) choice += "B";
+		else if (evt.key.keysym.sym == SDLK_c) choice += "C";
+		else if (evt.key.keysym.sym == SDLK_d) choice += "D";
+		else if (evt.key.keysym.sym == SDLK_e) choice += "E";
+		else if (evt.key.keysym.sym == SDLK_f) choice += "F";
+		else if (evt.key.keysym.sym == SDLK_g) choice += "G";
+		else return false;
+
+		if (sharp) {
+			if (choice != "E" && choice != "B") choice += "s"; // there is no E# or B#
+			else return false;
+		}
+		choice += "4";
+		std::cout << choice << std::endl;
+
+		for (uint32_t i = 0; i < keycount; i++) {
+			if (choice == keys[i]) {
+				selection ^= 1 << i;
+				std::cout << selection << std::endl;
+			}
 		}
 	} else if (evt.type == SDL_KEYUP) {
-		if (evt.key.keysym.sym == SDLK_a) {
-			left.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
-			right.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
-			up.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
-			down.pressed = false;
+		if (evt.key.keysym.sym == SDLK_LSHIFT || evt.key.keysym.sym == SDLK_RSHIFT) {
+			sharp = false;
 			return true;
 		}
-	} else if (evt.type == SDL_MOUSEBUTTONDOWN) {
+	}
+	/* else if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
 			SDL_SetRelativeMouseMode(SDL_TRUE);
 			return true;
@@ -134,16 +136,17 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			);
 			return true;
 		}
-	}
+	} */
 
 	return false;
 }
 
 void PlayMode::update(float elapsed) {
 
-	cycle += elapsed;
+	cycle += elapsed / 1.5f;
 	cycle -= std::floor(cycle);
 
+	/*
 	//move camera:
 	{
 
@@ -171,7 +174,7 @@ void PlayMode::update(float elapsed) {
 		glm::vec3 frame_right = frame[0];
 		glm::vec3 frame_at = frame[3];
 		Sound::listener.set_position_right(frame_at, frame_right, 1.0f / 60.0f);
-	}
+	}*/
 
 	//reset button press counters:
 	left.downs = 0;
@@ -216,11 +219,6 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
-		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
-			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
-			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 	}
 	GL_ERRORS();
 }
