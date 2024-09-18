@@ -61,6 +61,14 @@ void PlayMode::play_notes(uint32_t code) {
 	}
 }
 
+uint32_t PlayMode::note_count(uint32_t code) {
+	uint32_t notes = 0;
+	for (uint32_t i = 0; i < keycount; i++) {
+		notes += (code & (1 << i)) ? 1 : 0;
+	}
+	return notes;
+}
+
 void PlayMode::set_answer() {
 	// 4 random keys, possibly with repeats
 	// sourced partly from https://en.cppreference.com/w/cpp/numeric/random/uniform_int_distribution
@@ -70,7 +78,7 @@ void PlayMode::set_answer() {
 	answer = 0;
 	for (uint32_t i = 0; i < max_pressed; i++) {
 		uint32_t this_key = keygen(gen);
-		std::cout << keys[this_key] << std::endl;
+		// std::cout << keys[this_key] << std::endl;
 		answer |= 1 << this_key;
 	}
 	play_notes(answer);
@@ -78,12 +86,27 @@ void PlayMode::set_answer() {
 
 void PlayMode::clear_guess() {
 	selection = 0;
-	keys_pressed = 0;
 }
 
 void PlayMode::reset() {
 	set_answer();
 	clear_guess();
+}
+
+void PlayMode::submit_guess() {
+	current_guesses++;
+	total_guesses++;
+	compare_guess = true;
+	if (selection == answer) {
+		corrects++;
+		play_notes(answer);
+		paused = true;
+		correct_timer = correct_pause;
+		correct_play = Sound::play(*correct_sample, 1.0f, 0.0f);
+	}
+	else {
+		incorrect_play = Sound::play(*incorrect_sample, 1.0f, 0.0f);
+	}
 }
 
 PlayMode::PlayMode() : scene(*piano_scene) {
@@ -96,18 +119,39 @@ PlayMode::PlayMode() : scene(*piano_scene) {
 	// apply tint function
 	for (auto &drawable : scene.drawables) {
 		drawable.pipeline.set_uniforms = [&]() {
+			uint32_t valid, wrong = 0;
+			if (compare_guess) {
+				valid = selection & answer;
+				wrong = selection - valid;
+			}
+			else {
+				valid = selection;
+			}
+			bool present_key = false;
 			for (uint32_t i = 0; i < keycount; i++) {
 				if (drawable.name == keys[i]) {
-					if (selection & (1 << i)) {
+					present_key = true;
+					if (valid & (1 << i)) {
 						// different highlighting for white/black keys
-						if (drawable.name[1] == 's') glUniform3f(drawable.pipeline.TINT_vec3, 0.5f, 3.0f, 0.5f);
-						else glUniform3f(drawable.pipeline.TINT_vec3, 0.125f, 1.0f, 0.125f);
+						if (compare_guess) {
+							if (drawable.name[1] == 's') glUniform3f(drawable.pipeline.TINT_vec3, 0.5f, 3.0f, 0.5f);
+							else glUniform3f(drawable.pipeline.TINT_vec3, 0.125f, 1.0f, 0.125f);
+						}
+						else {
+							if (drawable.name[1] == 's') glUniform3f(drawable.pipeline.TINT_vec3, 3.0f, 3.0f, 0.5f);
+							else glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, 1.0f, 0.125f);
+						}
+					}
+					else if (wrong & (1 << i)) {
+						if (drawable.name[1] == 's') glUniform3f(drawable.pipeline.TINT_vec3, 3.0f, 0.5f, 0.5f);
+						else glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, 0.125f, 0.125f);
 					}
 					else {
 						glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, 1.0f, 1.0f);
 					}
 				}
 			}
+			if (!present_key) glUniform3f(drawable.pipeline.TINT_vec3, 1.0f, 1.0f, 1.0f);
 		};
 	}
 
@@ -116,22 +160,24 @@ PlayMode::PlayMode() : scene(*piano_scene) {
 	camera = &scene.cameras.front();
 
 	set_answer();
-
-	// loop test
-	// correct_loop = Sound::loop(*correct_sample, 1.0f, 0.0f);
-	// incorrect_loop = Sound::loop(*incorrect_sample, 1.0f, 0.0f);
 }
 
 PlayMode::~PlayMode() {
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
+	if (paused) return false;
 
 	if (evt.type == SDL_KEYDOWN) {
 		if (evt.key.keysym.sym == SDLK_LSHIFT || evt.key.keysym.sym == SDLK_RSHIFT) {
 			sharp = true;
 			return true;
 		}
+		if (evt.key.keysym.sym == SDLK_RETURN) {
+			submit_guess();
+			return true;
+		}
+		compare_guess = false;
 		if (evt.key.keysym.sym == SDLK_z) {
 			play_notes(selection);
 			return true;
@@ -158,8 +204,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		for (uint32_t i = 0; i < keycount; i++) {
 			if (choice == keys[i]) {
 				bool already_pressed = (bool)(selection & (1 << i));
-				if (!already_pressed && (keys_pressed >= max_pressed)) return false; // cannot press more keys
-				keys_pressed += already_pressed ? -1 : 1;
+				if (!already_pressed && (note_count(selection) >= note_count(answer))) return false; // cannot press more keys
 
 				if (!already_pressed) {
 					// play the sound
@@ -199,8 +244,13 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 void PlayMode::update(float elapsed) {
 
-	cycle += elapsed / 1.5f;
-	cycle -= std::floor(cycle);
+	if (paused) {
+		correct_timer -= elapsed;
+		if (correct_timer <= 0.0f) {
+			paused = false;
+			reset();
+		}
+	}
 
 	/*
 	//move camera:
@@ -272,8 +322,25 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 		constexpr float H = 0.09f;
 		lines.draw_text("CDEFGAB for white keys, shift for sharp notes (black keys)",
-			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
+			glm::vec3(-aspect + 0.1f * H, -0.8 + 0.1f * H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+		lines.draw_text("Z to play your keys, X to play target",
+			glm::vec3(-aspect + 0.1f * H, -0.95 + 0.1f * H, 0.0),
+			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+
+		std::string info = "Keys in target: " + std::to_string(note_count(answer));
+		lines.draw_text(info,
+			glm::vec3(-aspect + 0.1f * H, 0.9f - 0.1f * H, 0.0),
+			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H * 0.9f, 0.0f),
+			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+		
+		std::string pct = (total_guesses) ? std::to_string((int)(std::floor((float)corrects / (float)total_guesses * 100.0f))) : "-";
+		std::string info2 = "Accuracy: " + std::to_string(corrects) + "/" + std::to_string(total_guesses) + " (" + pct + "%)";
+		lines.draw_text(info2,
+			glm::vec3(-aspect + 0.1f * H, 0.75f - 0.1f * H, 0.0),
+			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H * 0.9f, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 	}
 	GL_ERRORS();

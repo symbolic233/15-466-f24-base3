@@ -31,7 +31,9 @@ struct PlayMode : Mode {
 	Scene::Transform *c4 = nullptr;
 	Scene::Transform *cs4 = nullptr;
 
-	float cycle = 0.0f;
+	float correct_timer = 0.0f;
+	float correct_pause = 2.0f;
+	bool paused = false;
 
 	void set_answer();
 	void clear_guess();
@@ -42,16 +44,19 @@ struct PlayMode : Mode {
 	uint32_t corrects = 0;
 
 	uint32_t selection = 0;
-	uint32_t keys_pressed = 0;
 	uint32_t answer = 0;
 	void play_notes(uint32_t code);
+	uint32_t note_count(uint32_t code);
+
+	bool compare_guess = false;
+	void submit_guess();
 
 	bool sharp = false;
 	static const uint32_t keycount = 12;
 	std::string keys[keycount] = {"C4", "Cs4", "D4", "Ds4", "E4", "F4", "Fs4", "G4", "Gs4", "A4", "As4", "B4"};
 
-	std::shared_ptr< Sound::PlayingSample > correct_loop;
-	std::shared_ptr< Sound::PlayingSample > incorrect_loop;
+	std::shared_ptr< Sound::PlayingSample > correct_play;
+	std::shared_ptr< Sound::PlayingSample > incorrect_play;
 	// vector initialization: https://stackoverflow.com/questions/29298026/stdvector-size-in-header
 
 	typedef std::vector<std::shared_ptr< Sound::PlayingSample >> piano_store;
