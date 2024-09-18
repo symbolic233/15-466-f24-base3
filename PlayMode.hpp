@@ -32,14 +32,32 @@ struct PlayMode : Mode {
 	Scene::Transform *cs4 = nullptr;
 
 	float cycle = 0.0f;
+
+	void set_answer();
+	void clear_guess();
+	void reset();
+	static const uint32_t max_pressed = 4;
+	uint32_t current_guesses = 0;
+	uint32_t total_guesses = 0;
+	uint32_t corrects = 0;
+
 	uint32_t selection = 0;
+	uint32_t keys_pressed = 0;
 	uint32_t answer = 0;
+	void play_notes(uint32_t code);
+
 	bool sharp = false;
-	static const uint32_t keycount = 13;
-	std::string keys[keycount] = {"C4", "Cs4", "D4", "Ds4", "E4", "F4", "Fs4", "G4", "Gs4", "A4", "As4", "B4", "C5"};
+	static const uint32_t keycount = 12;
+	std::string keys[keycount] = {"C4", "Cs4", "D4", "Ds4", "E4", "F4", "Fs4", "G4", "Gs4", "A4", "As4", "B4"};
 
 	std::shared_ptr< Sound::PlayingSample > correct_loop;
 	std::shared_ptr< Sound::PlayingSample > incorrect_loop;
+	// vector initialization: https://stackoverflow.com/questions/29298026/stdvector-size-in-header
+
+	typedef std::vector<std::shared_ptr< Sound::PlayingSample >> piano_store;
+	piano_store piano_keys = std::vector<std::shared_ptr< Sound::PlayingSample >>(keycount);
+	// piano_store piano_guess = std::vector<std::shared_ptr< Sound::PlayingSample >>(keycount);
+	// piano_store piano_answer = std::vector<std::shared_ptr< Sound::PlayingSample >>(keycount);
 	
 	//camera:
 	Scene::Camera *camera = nullptr;
