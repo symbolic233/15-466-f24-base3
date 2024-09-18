@@ -102,7 +102,7 @@ void PlayMode::submit_guess() {
 		play_notes(answer);
 		paused = true;
 		correct_timer = correct_pause;
-		correct_play = Sound::play(*correct_sample, 1.0f, 0.0f);
+		// correct_play = Sound::play(*correct_sample, 1.0f, 0.0f);
 	}
 	else {
 		incorrect_play = Sound::play(*incorrect_sample, 1.0f, 0.0f);
@@ -336,7 +336,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H * 0.9f, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		
-		std::string pct = (total_guesses) ? std::to_string((int)(std::floor((float)corrects / (float)total_guesses * 100.0f))) : "-";
+		std::string pct = (total_guesses) ? std::to_string((int)(std::round((float)corrects / (float)total_guesses * 100.0f))) : "-";
 		std::string info2 = "Accuracy: " + std::to_string(corrects) + "/" + std::to_string(total_guesses) + " (" + pct + "%)";
 		lines.draw_text(info2,
 			glm::vec3(-aspect + 0.1f * H, 0.75f - 0.1f * H, 0.0),

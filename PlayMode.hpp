@@ -38,7 +38,7 @@ struct PlayMode : Mode {
 	void set_answer();
 	void clear_guess();
 	void reset();
-	static const uint32_t max_pressed = 4;
+	static const uint32_t max_pressed = 3;
 	uint32_t current_guesses = 0;
 	uint32_t total_guesses = 0;
 	uint32_t corrects = 0;
